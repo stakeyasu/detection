@@ -1,0 +1,10 @@
+EPOCH:: 1, Validation cost: 126.2847, Validation F1: 0.5378, Time: 68.9690 
+EPOCH:: 2, Validation cost: 112.5013, Validation F1: 0.5838, Time: 67.4477 
+EPOCH:: 3, Validation cost: 89.5625, Validation F1: 0.6794, Time: 67.4907 
+EPOCH:: 4, Validation cost: 81.5154, Validation F1: 0.7076, Time: 67.5142 
+EPOCH:: 5, Validation cost: 75.9512, Validation F1: 0.7328, Time: 67.5350 
+EPOCH:: 6, Validation cost: 74.2989, Validation F1: 0.7538, Time: 67.5942 
+EPOCH:: 7, Validation cost: 76.9660, Validation F1: 0.7564, Time: 67.5912 
+EPOCH:: 8, Validation cost: 76.2352, Validation F1: 0.7593, Time: 67.6089 
+EPOCH:: 9, Validation cost: 78.6121, Validation F1: 0.7685, Time: 67.5675 
+EPOCH:: 10, Validation cost: 84.1175, Validation F1: 0.7633, Time: 67.5933 

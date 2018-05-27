@@ -121,7 +121,7 @@ def homework(train_X, train_y, test_X):
   test_X /= 255.
   train_X, valid_X, train_y, valid_y = train_test_split(train_X, train_y, test_size=0.2, random_state=42)
 
-  n_epochs = 100
+  n_epochs = 30
   batch_size = 100
   n_batches = train_X.shape[0]//batch_size
   __n_batches = valid_X.shape[0]//batch_size
@@ -137,7 +137,7 @@ def homework(train_X, train_y, test_X):
         for i in range(n_batches):
             start = i * batch_size
             end = start + batch_size
-            sess.run(train, feed_dict={x: train_X[start:end], t: train_y[start:end], keep_prob: 1.0})
+            sess.run(train, feed_dict={x: train_X[start:end], t: train_y[start:end], keep_prob: 0.5})
             
         pred_valid_y = []
         valid_cost = 0

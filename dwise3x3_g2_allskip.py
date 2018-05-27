@@ -21,7 +21,7 @@ def homework(train_X, train_y, test_X):
  
   rng = np.random.RandomState(1234)
     
-  class Conv_BN_DROPOUT:
+  class Conv_BN:
     def __init__(self, filter_shape, function, strides, padding='VALID'):
         # Xavier Initialization
         fan_in = np.prod(filter_shape[:3])
@@ -45,8 +45,61 @@ def homework(train_X, train_y, test_X):
         u = tf.nn.conv2d(x, self.W, self.strides, self.padding) + self.b
         mean, var = tf.nn.moments(u, [0,1,2])
         bn = tf.nn.batch_normalization(u, mean, var, None, None, 2e-5)
-        drop = tf.nn.dropout(bn, keep_prob)
-        return self.function(drop)
+        if self.function=="NON":
+          return bn
+        else:
+          return self.function(bn)
+
+  class dwConv_BN:
+    def __init__(self, filter_shape, function, strides, padding='VALID'):
+        # Xavier Initialization
+        fan_in = np.prod(filter_shape[:3])
+        fan_out = np.prod(filter_shape[:2]) * filter_shape[3]
+        self.W = tf.Variable(rng.uniform(
+                        low=-np.sqrt(6./(fan_in + fan_out)),
+                        high=np.sqrt(6./(fan_in + fan_out)),
+                        size=filter_shape
+                    ).astype('float32'), name='W')
+
+        self.b = tf.Variable(np.zeros((filter_shape[3]), dtype='float32'), name='b') # バイアスはフィルタごとなので, 出力フィルタ数と同じ次元数
+        self.function = function
+        self.strides = strides
+        self.padding = padding
+        self.avg_mean = 0.
+        self.avg_var = 0.
+        self.avg_cnt = 0
+
+
+    def f_prop(self, x, keep_prob):
+        u = tf.nn.depthwise_conv2d(x, self.W, self.strides, self.padding) + self.b
+        mean, var = tf.nn.moments(u, [0,1,2])
+        bn = tf.nn.batch_normalization(u, mean, var, None, None, 2e-5)
+        if self.function=="NON":
+          return bn
+        else:
+          return self.function(bn)
+
+
+  class DW_RESNET_MODULE:
+    def __init__(self, filter_shape, function, strides, padding='VALID'):
+        # Xavier Initialization
+        self.function = function
+        self.strides = strides
+        self.padding = padding
+        self.in_ch = filter_shape[2]
+        self.out_ch = filter_shape[3]
+        self.kernel = filter_shape[0]
+
+    def f_prop(self, x, keep_prob):
+
+        print((self.in_ch,self.out_ch))
+        h=dwConv_BN((self.kernel, self.kernel, self.in_ch, 2), self.function, self.strides, self.padding).f_prop(x,keep_prob)
+        h=Conv_BN((1, 1, self.in_ch, self.out_ch),"NON", [1,1,1,1], self.padding).f_prop(h,keep_prob)
+        if (self.in_ch==self.out_ch)and(self.strides==[1,1,1,1]):
+	        return tf.nn.relu(x+h)
+        else :
+                h2=Conv_BN((1, 1, self.in_ch, self.out_ch), "NON", self.strides, self.padding).f_prop(x,keep_prob)
+                return tf.nn.relu(h+h2)
 
   class Pooling:
     def __init__(self, ksize, padding='VALID'):
@@ -80,22 +133,22 @@ def homework(train_X, train_y, test_X):
   n_ch = 64
     
   layers = [                            # (縦の次元数)x(横の次元数)x(チャネル数)
-    Conv_BN_DROPOUT((3, 3, 3, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
-    Conv_BN_DROPOUT((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
-    Conv_BN_DROPOUT((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
-    Conv_BN_DROPOUT((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
-    Conv_BN_DROPOUT((3, 3, n_ch, 2*n_ch), tf.nn.relu, [1,2,2,1,],"SAME"),  # 32 -> 16
-    Conv_BN_DROPOUT((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
-    Conv_BN_DROPOUT((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
-    Conv_BN_DROPOUT((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
-    Conv_BN_DROPOUT((3, 3, 2*n_ch, 4*n_ch), tf.nn.relu, [1,2,2,1],"SAME"),  # 16 -> 8
-    Conv_BN_DROPOUT((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
-    Conv_BN_DROPOUT((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
-    Conv_BN_DROPOUT((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
-    Conv_BN_DROPOUT((3, 3, 4*n_ch, 8*n_ch), tf.nn.relu, [1,2,2,1],"SAME"),  # 8 -> 4
-    Conv_BN_DROPOUT((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
-    Conv_BN_DROPOUT((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
-    Conv_BN_DROPOUT((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
+    Conv_BN((3, 3, 3, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
+    DW_RESNET_MODULE((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
+    DW_RESNET_MODULE((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
+    DW_RESNET_MODULE((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
+    DW_RESNET_MODULE((3, 3, n_ch, 2*n_ch), tf.nn.relu, [1,2,2,1,],"SAME"),  # 32 -> 16
+    DW_RESNET_MODULE((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
+    DW_RESNET_MODULE((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
+    DW_RESNET_MODULE((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
+    DW_RESNET_MODULE((3, 3, 2*n_ch, 4*n_ch), tf.nn.relu, [1,2,2,1],"SAME"),  # 16 -> 8
+    DW_RESNET_MODULE((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
+    DW_RESNET_MODULE((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
+    DW_RESNET_MODULE((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
+    DW_RESNET_MODULE((3, 3, 4*n_ch, 8*n_ch), tf.nn.relu, [1,2,2,1],"SAME"),  # 8 -> 4
+    DW_RESNET_MODULE((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
+    DW_RESNET_MODULE((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
+    DW_RESNET_MODULE((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
     Pooling((1, 4, 4, 1)),            #  4 ->  1
     Flatten(),
     Dense(8*n_ch, 10, tf.nn.softmax)
@@ -105,12 +158,12 @@ def homework(train_X, train_y, test_X):
   t = tf.placeholder(tf.float32, [None, 10])
   keep_prob = tf.placeholder(tf.float32)
 
-  def f_props(layers, x, keep_prob):
+  def f_props(layers, x,keep_prob):
     for layer in layers:
-        x = layer.f_prop(x, keep_prob)
+        x = layer.f_prop(x,keep_prob)
     return x
 
-  y = f_props(layers, x, keep_prob)
+  y = f_props(layers, x,keep_prob)
 
   cost = -tf.reduce_mean(tf.reduce_sum(t * tf.log(tf.clip_by_value(y, 1e-10, 1.0)), axis=1)) # tf.log(0)によるnanを防ぐ
 #  train = tf.train.GradientDescentOptimizer(0.01).minimize(cost)
@@ -121,7 +174,7 @@ def homework(train_X, train_y, test_X):
   test_X /= 255.
   train_X, valid_X, train_y, valid_y = train_test_split(train_X, train_y, test_size=0.2, random_state=42)
 
-  n_epochs = 100
+  n_epochs = 30
   batch_size = 100
   n_batches = train_X.shape[0]//batch_size
   __n_batches = valid_X.shape[0]//batch_size
@@ -150,9 +203,8 @@ def homework(train_X, train_y, test_X):
         elapsed_time = time.time() - start_time
             
         print('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f, Time: %.4f' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro'), elapsed_time))
-        fp1.write('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f, Time: %.4f \n' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro'), elapsed_time))
+        fp1.write('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f, Time: %.4f \n' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y,  average='macro'), elapsed_time))
         fp1.flush()
-
     print("Train Complete.")
     fp1.close()
     pred_y = []

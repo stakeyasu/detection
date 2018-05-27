@@ -3,7 +3,6 @@
 
 import sys
 import os
-import time
 
 from keras.datasets import cifar10
 from sklearn.utils import shuffle
@@ -48,6 +47,33 @@ def homework(train_X, train_y, test_X):
         drop = tf.nn.dropout(bn, keep_prob)
         return self.function(drop)
 
+  class Conv_BN_DROPOUT_SKIP:
+    def __init__(self, filter_shape, function, strides, padding='VALID'):
+        # Xavier Initialization
+        fan_in = np.prod(filter_shape[:3])
+        fan_out = np.prod(filter_shape[:2]) * filter_shape[3]
+        self.W = tf.Variable(rng.uniform(
+                        low=-np.sqrt(6./(fan_in + fan_out)),
+                        high=np.sqrt(6./(fan_in + fan_out)),
+                        size=filter_shape
+                    ).astype('float32'), name='W')
+
+        self.b = tf.Variable(np.zeros((filter_shape[3]), dtype='float32'), name='b') # バイアスはフィルタごとなので, 出力フィルタ数と同じ次元数
+        self.function = function
+        self.strides = strides
+        self.padding = padding
+        self.avg_mean = 0.
+        self.avg_var = 0.
+        self.avg_cnt = 0
+
+
+    def f_prop(self, x, keep_prob):
+        u = tf.nn.conv2d(x, self.W, self.strides, self.padding) + self.b
+        mean, var = tf.nn.moments(u, [0,1,2])
+        bn = tf.nn.batch_normalization(u, mean, var, None, None, 2e-5)
+        func = self.function(bn)
+        return x+tf.nn.dropout(func, keep_prob)
+
   class Pooling:
     def __init__(self, ksize, padding='VALID'):
         self.ksize = ksize
@@ -81,21 +107,21 @@ def homework(train_X, train_y, test_X):
     
   layers = [                            # (縦の次元数)x(横の次元数)x(チャネル数)
     Conv_BN_DROPOUT((3, 3, 3, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
-    Conv_BN_DROPOUT((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
-    Conv_BN_DROPOUT((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
-    Conv_BN_DROPOUT((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
+    Conv_BN_DROPOUT_SKIP((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
+    Conv_BN_DROPOUT_SKIP((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
+    Conv_BN_DROPOUT_SKIP((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
     Conv_BN_DROPOUT((3, 3, n_ch, 2*n_ch), tf.nn.relu, [1,2,2,1,],"SAME"),  # 32 -> 16
-    Conv_BN_DROPOUT((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
-    Conv_BN_DROPOUT((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
-    Conv_BN_DROPOUT((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
+    Conv_BN_DROPOUT_SKIP((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
+    Conv_BN_DROPOUT_SKIP((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
+    Conv_BN_DROPOUT_SKIP((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
     Conv_BN_DROPOUT((3, 3, 2*n_ch, 4*n_ch), tf.nn.relu, [1,2,2,1],"SAME"),  # 16 -> 8
-    Conv_BN_DROPOUT((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
-    Conv_BN_DROPOUT((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
-    Conv_BN_DROPOUT((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
+    Conv_BN_DROPOUT_SKIP((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
+    Conv_BN_DROPOUT_SKIP((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
+    Conv_BN_DROPOUT_SKIP((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
     Conv_BN_DROPOUT((3, 3, 4*n_ch, 8*n_ch), tf.nn.relu, [1,2,2,1],"SAME"),  # 8 -> 4
-    Conv_BN_DROPOUT((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
-    Conv_BN_DROPOUT((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
-    Conv_BN_DROPOUT((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
+    Conv_BN_DROPOUT_SKIP((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
+    Conv_BN_DROPOUT_SKIP((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
+    Conv_BN_DROPOUT_SKIP((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
     Pooling((1, 4, 4, 1)),            #  4 ->  1
     Flatten(),
     Dense(8*n_ch, 10, tf.nn.softmax)
@@ -132,7 +158,6 @@ def homework(train_X, train_y, test_X):
   with tf.Session() as sess:
     sess.run(init)
     for epoch in range(n_epochs):
-        start_time = time.time()
         train_X, train_y = shuffle(train_X, train_y, random_state=42)
         for i in range(n_batches):
             start = i * batch_size
@@ -147,10 +172,9 @@ def homework(train_X, train_y, test_X):
             _pred_valid_y, _valid_cost = sess.run([valid, cost], feed_dict={x: valid_X[start:end], t: valid_y[start:end], keep_prob: 1.0})
             pred_valid_y.extend(_pred_valid_y)
             valid_cost = valid_cost + _valid_cost
-        elapsed_time = time.time() - start_time
             
-        print('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f, Time: %.4f' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro'), elapsed_time))
-        fp1.write('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f, Time: %.4f \n' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro'), elapsed_time))
+        print('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro')))
+        fp1.write('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f \n' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro')))
         fp1.flush()
 
     print("Train Complete.")

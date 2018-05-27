@@ -3,7 +3,6 @@
 
 import sys
 import os
-import time
 
 from keras.datasets import cifar10
 from sklearn.utils import shuffle
@@ -82,19 +81,11 @@ def homework(train_X, train_y, test_X):
   layers = [                            # (縦の次元数)x(横の次元数)x(チャネル数)
     Conv_BN_DROPOUT((3, 3, 3, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
     Conv_BN_DROPOUT((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
-    Conv_BN_DROPOUT((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
-    Conv_BN_DROPOUT((3, 3, n_ch, n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 32 -> 32
     Conv_BN_DROPOUT((3, 3, n_ch, 2*n_ch), tf.nn.relu, [1,2,2,1,],"SAME"),  # 32 -> 16
-    Conv_BN_DROPOUT((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
-    Conv_BN_DROPOUT((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
     Conv_BN_DROPOUT((3, 3, 2*n_ch, 2*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 16 -> 16
     Conv_BN_DROPOUT((3, 3, 2*n_ch, 4*n_ch), tf.nn.relu, [1,2,2,1],"SAME"),  # 16 -> 8
     Conv_BN_DROPOUT((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
-    Conv_BN_DROPOUT((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
-    Conv_BN_DROPOUT((3, 3, 4*n_ch, 4*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 8 -> 8
     Conv_BN_DROPOUT((3, 3, 4*n_ch, 8*n_ch), tf.nn.relu, [1,2,2,1],"SAME"),  # 8 -> 4
-    Conv_BN_DROPOUT((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
-    Conv_BN_DROPOUT((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
     Conv_BN_DROPOUT((3, 3, 8*n_ch, 8*n_ch), tf.nn.relu, [1,1,1,1],"SAME"),  # 4 -> 4
     Pooling((1, 4, 4, 1)),            #  4 ->  1
     Flatten(),
@@ -121,7 +112,7 @@ def homework(train_X, train_y, test_X):
   test_X /= 255.
   train_X, valid_X, train_y, valid_y = train_test_split(train_X, train_y, test_size=0.2, random_state=42)
 
-  n_epochs = 100
+  n_epochs = 30
   batch_size = 100
   n_batches = train_X.shape[0]//batch_size
   __n_batches = valid_X.shape[0]//batch_size
@@ -132,7 +123,6 @@ def homework(train_X, train_y, test_X):
   with tf.Session() as sess:
     sess.run(init)
     for epoch in range(n_epochs):
-        start_time = time.time()
         train_X, train_y = shuffle(train_X, train_y, random_state=42)
         for i in range(n_batches):
             start = i * batch_size
@@ -147,10 +137,9 @@ def homework(train_X, train_y, test_X):
             _pred_valid_y, _valid_cost = sess.run([valid, cost], feed_dict={x: valid_X[start:end], t: valid_y[start:end], keep_prob: 1.0})
             pred_valid_y.extend(_pred_valid_y)
             valid_cost = valid_cost + _valid_cost
-        elapsed_time = time.time() - start_time
             
-        print('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f, Time: %.4f' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro'), elapsed_time))
-        fp1.write('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f, Time: %.4f \n' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro'), elapsed_time))
+        print('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro')))
+        fp1.write('EPOCH:: %i, Validation cost: %.4f, Validation F1: %.4f \n' % (epoch + 1, valid_cost, f1_score(np.argmax(valid_y, 1).astype('int32'), pred_valid_y, average='macro')))
         fp1.flush()
 
     print("Train Complete.")
