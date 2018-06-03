@@ -10,6 +10,7 @@ from sklearn.utils import shuffle
 from sklearn.metrics import f1_score
 from sklearn.datasets import fetch_mldata
 from sklearn.model_selection import train_test_split
+from common import augmentation
 
 import numpy as np
 import tensorflow as tf
@@ -42,7 +43,7 @@ def homework(train_X, train_y, test_X):
 
 
     def f_prop(self, x, keep_prob):
-        u = tf.nn.conv2d(x, self.W, self.strides, self.padding) + self.b
+        u = tf.nn.conv2d(x, self.W, self.strides, self.padding)
         mean, var = tf.nn.moments(u, [0,1,2])
         bn = tf.nn.batch_normalization(u, mean, var, None, None, 2e-5)
         if self.function=="NON":
@@ -71,7 +72,7 @@ def homework(train_X, train_y, test_X):
 
 
     def f_prop(self, x, keep_prob):
-        u = tf.nn.depthwise_conv2d(x, self.W, self.strides, self.padding) + self.b
+        u = tf.nn.depthwise_conv2d(x, self.W, self.strides, self.padding)
         return u
 
 
@@ -162,11 +163,9 @@ def homework(train_X, train_y, test_X):
   train = tf.train.AdamOptimizer().minimize(cost)
 
   valid = tf.argmax(y, 1) 
-  train_X /= 255.
-  test_X /= 255.
   train_X, valid_X, train_y, valid_y = train_test_split(train_X, train_y, test_size=0.2, random_state=42)
 
-  n_epochs = 30
+  n_epochs = 100
   batch_size = 100
   n_batches = train_X.shape[0]//batch_size
   __n_batches = valid_X.shape[0]//batch_size
@@ -179,6 +178,7 @@ def homework(train_X, train_y, test_X):
     for epoch in range(n_epochs):
         start_time = time.time()
         train_X, train_y = shuffle(train_X, train_y, random_state=42)
+        augmentation.flip(train_X)
         for i in range(n_batches):
             start = i * batch_size
             end = start + batch_size
@@ -242,8 +242,5 @@ def score_homework():
     train_X, test_X, train_y, test_y = load_cifar()
     pred_y = homework(train_X, train_y, test_X)
     print(f1_score(np.argmax(test_y, 1), pred_y, average='macro'))
-
-score_homework()
-
 
 
